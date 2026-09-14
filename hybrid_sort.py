@@ -15,13 +15,19 @@ import random
 
 def insertion_sort(arr, left, right):
     """Sorts arr[left..right] in place. Standard insertion sort."""
+    comparisons = 0
     for i in range(left + 1, right + 1):
         key = arr[i]
         j = i - 1
-        while j >= left and arr[j] > key:
-            arr[j + 1] = arr[j]
-            j -= 1
+        while j >= left:
+            comparisons += 1 ## KEY COMPARISON
+            if arr[j] > key:
+                arr[j + 1] = arr[j]
+                j -= 1
+            else:
+                break
         arr[j + 1] = key
+    return comparisons
 
 
 def merge(arr, left, mid, right):
@@ -32,8 +38,10 @@ def merge(arr, left, mid, right):
     i = j = 0
     k = left
 
+    comparisons = 0
     while i < len(left_half) and j < len(right_half):
-        if left_half[i] <= right_half[j]:
+        comparisons += 1 ## KEY COMPARISON
+        if left_half[i] <= right_half[j]: 
             arr[k] = left_half[i]
             i += 1
         else:
@@ -53,6 +61,9 @@ def merge(arr, left, mid, right):
         k += 1
 
 
+    return comparisons
+
+
 def hybrid_sort(arr, threshold=43, left=0, right=None):
     """
     Sorts arr[left..right] in place using merge sort, but falls back to
@@ -62,23 +73,26 @@ def hybrid_sort(arr, threshold=43, left=0, right=None):
     tends to work well in practice).
     TODO: Tuning against our own timing results?
     """
+    comparisons = 0
     if right is None:
         right = len(arr) - 1
 
     if right - left + 1 <= threshold:
-        insertion_sort(arr, left, right)
-        return
+        comparisons += insertion_sort(arr, left, right)
+        return comparisons
 
     mid = (left + right) // 2
-    hybrid_sort(arr, threshold, left, mid)
-    hybrid_sort(arr, threshold, mid + 1, right)
-    merge(arr, left, mid, right)
+    comparisons += hybrid_sort(arr, threshold, left, mid)
+    comparisons += hybrid_sort(arr, threshold, mid + 1, right)
+    comparisons += merge(arr, left, mid, right)
+    return comparisons
 
 
 if __name__ == "__main__":
     # quick sanity check before trusting this on the real benchmark data
     sample = [random.randint(1, 100_000) for _ in range(2000)]
     result = sample[:]
-    hybrid_sort(result, threshold=43)
+    comparisons = hybrid_sort(result, threshold=43)
     assert result == sorted(sample), "hybrid_sort produced a wrong result"
     print("sanity check passed on a random 2000-element array")
+    print(f"Comparisons used: {comparisons}")
