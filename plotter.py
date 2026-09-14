@@ -8,17 +8,20 @@ number of corresponding key comparisons. Plots a bar graph.
 import matplotlib.pyplot as plt
 from matplotlib.ticker import StrMethodFormatter
 
-def plot_bar_graph(comparisons, x_label):
+def plot_bar_graph(comparisons, x_label, y_label, save_path):
     x_ticks = [f"{k:,}" for k in comparisons.keys()]
-    plt.figure(figsize=(10, 6))
-    plt.bar(x_ticks, comparisons.values())
+    fig, ax = plt.subplots(figsize=(10, 6))
+    ax.bar(x_ticks, comparisons.values())
 
-    plt.title(f"Key Comparisons by {x_label}")
-    plt.xlabel(x_label)
-    plt.ylabel("No. of Key Comparisons")
-    plt.ticklabel_format(style="plain", axis="y")
-    plt.gca().yaxis.set_major_formatter(StrMethodFormatter('{x:,.0f}'))
+    ax.set_title(f"Key Comparisons by {x_label}")
+    ax.set_xlabel(x_label)
+    ax.set_ylabel(y_label)
+    ax.ticklabel_format(style="plain", axis="y")
+    ax.yaxis.set_major_formatter(StrMethodFormatter('{x:,.0f}'))
     plt.grid(axis="y", linestyle="--", alpha=0.7)
 
-    plt.tight_layout()
+    fig.tight_layout()
+    plt.savefig(save_path)
     plt.show()
+
+    return fig, ax
