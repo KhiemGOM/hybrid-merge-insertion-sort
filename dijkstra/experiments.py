@@ -11,6 +11,7 @@ parts) and running time. Outputs go into ./results:
 """
 import csv
 import os
+import sys
 import time
 
 import matplotlib
@@ -65,27 +66,34 @@ def run_grid():
     return g
 
 
-def line_figure(xs, g_slice, xlabel, title, fname):
+def line_figure(xs, g_slice, xlabel, title, fname, square_x=False):
+    """square_x: plot against |V|^2 (ticks labelled with |V|^2 and |V|) so that
+    the quadratic dependence on |V| shows up as a straight line."""
+    labels = ([f"{x * x:,}\n(V={x})" for x in xs] if square_x
+              else [f"{x:,}" for x in xs])
+    pos = [x * x for x in xs] if square_x else list(xs)
     fig, axes = plt.subplots(1, 2, figsize=(14, 5.5))
     ax = axes[0]
     styles = [("total", "Total Comparisons", "o", "tab:blue"),
               ("scan", "Array Scan Comparisons (extract-min)", "s", "tab:orange"),
               ("relax", "Relaxation Comparisons", "^", "tab:green")]
     for key, label, mk, col in styles:
-        ax.plot(xs, g_slice[key], marker=mk, markersize=7, linewidth=2,
+        ax.plot(pos, g_slice[key], marker=mk, markersize=7, linewidth=2,
                 color=col, label=label)
     ax.set_ylabel("Number of Key Comparisons", fontsize=12)
     ax.set_title("Key Comparisons", fontsize=13, fontweight="bold")
     ax2 = axes[1]
-    ax2.plot(xs, g_slice["time"], marker="D", markersize=7, linewidth=2,
+    ax2.plot(pos, g_slice["time"], marker="D", markersize=7, linewidth=2,
              color="tab:red", label="Running time")
     ax2.set_ylabel("Running time (s)", fontsize=12)
     ax2.set_title("Running Time (median of trials)", fontsize=13, fontweight="bold")
     ax2.set_ylim(bottom=0)
     for a in axes:
         a.set_xlabel(xlabel, fontsize=12)
-        a.set_xticks(xs)
-        a.tick_params(axis="x", rotation=45)
+        step = 2 if square_x else 1          # skip alternate labels, avoids overlap
+        a.set_xticks(pos[::step])
+        a.set_xticklabels(labels[::step], fontsize=8)
+        a.tick_params(axis="x", rotation=45 if not square_x else 0)
         a.grid(True, linestyle="--", alpha=0.6)
         a.legend()
     fig.suptitle(title, fontsize=14, fontweight="bold")
@@ -96,19 +104,24 @@ def line_figure(xs, g_slice, xlabel, title, fname):
 
 def contour_figure(g, keys, titles, fname, cbar_labels):
     fig, axes = plt.subplots(1, len(keys), figsize=(6.2 * len(keys), 5.5))
-    X, Y = np.meshgrid(V_VALUES, E_VALUES, indexing="ij")
+    V2 = [v * v for v in V_VALUES]          # x axis is |V|^2 so cost is linear
+    X, Y = np.meshgrid(V2, E_VALUES, indexing="ij")
     for ax, key, title, lab in zip(np.atleast_1d(axes), keys, titles, cbar_labels):
         Z = np.ma.masked_invalid(g[key])
         cf = ax.contourf(X, Y, Z, levels=14, cmap="viridis")
         cl = ax.contour(X, Y, Z, levels=14, colors="white", linewidths=0.8)
         ax.clabel(cl, fmt="%.3g", fontsize=7)
         fig.colorbar(cf, ax=ax, label=lab)
-        ax.plot(V_VALUES, [v * (v - 1) for v in V_VALUES], "r--", linewidth=1,
+        ax.plot(V2, [v * (v - 1) for v in V_VALUES], "r--", linewidth=1,
                 label="|E| = |V|(|V|-1) (max)")
         ax.set_ylim(E_VALUES[0], E_VALUES[-1])
         ax.set_facecolor("lightgray")      # infeasible region (|E| > |V|(|V|-1))
-        ax.text(V_VALUES[0] + 5, E_VALUES[-1] * 0.93, "infeasible", fontsize=8)
-        ax.set_xlabel("Number of Vertices (|V|)", fontsize=12)
+        ax.set_xlim(V2[0], V2[-1])
+        ax.set_xticks(V2[1::2])
+        ax.set_xticklabels([f"{v * v:,}\n(V={v})" for v in V_VALUES[1::2]],
+                           fontsize=8)
+        ax.text(V2[0] + 5000, E_VALUES[-1] * 0.93, "infeasible", fontsize=8)
+        ax.set_xlabel("|V|^2 (number of vertices squared)", fontsize=12)
         ax.set_ylabel("Number of Edges (|E|)", fontsize=12)
         ax.set_title(title, fontsize=13, fontweight="bold")
         ax.legend(loc="lower right", fontsize=8)
@@ -131,8 +144,22 @@ def fit_report(g):
               f"   R^2 = {r2:.4f}")
 
 
+def load_grid():
+    shape = (len(V_VALUES), len(E_VALUES))
+    g = {k: np.full(shape, np.nan) for k in ("scan", "relax", "total", "time")}
+    with open(os.path.join(OUT, "grid.csv")) as f:
+        for r in csv.DictReader(f):
+            i, j = V_VALUES.index(int(r["V"])), E_VALUES.index(int(r["E"]))
+            g["scan"][i, j] = float(r["scan_cmp"])
+            g["relax"][i, j] = float(r["relax_cmp"])
+            g["total"][i, j] = float(r["total_cmp"])
+            g["time"][i, j] = float(r["seconds"])
+    return g
+
+
 def main():
-    g = run_grid()
+    # `python experiments.py --replot` redraws from results/grid.csv without rerunning
+    g = load_grid() if "--replot" in sys.argv else run_grid()
     i = V_VALUES.index(FIXED_V)
     line_figure(E_VALUES, {k: v[i, :] for k, v in g.items()},
                 "Number of Edges (|E|)",
@@ -142,9 +169,9 @@ def main():
     ok = [k for k, n in enumerate(V_VALUES) if n * (n - 1) >= FIXED_E]
     line_figure([V_VALUES[k] for k in ok],
                 {k: v[ok, j] for k, v in g.items()},
-                "Number of Vertices (|V|)",
-                f"Dijkstra (matrix + array), |E| = {FIXED_E}: Cost vs. |V|",
-                "vs_V_fixedE.png")
+                "|V|^2 (number of vertices squared)",
+                f"Dijkstra (matrix + array), |E| = {FIXED_E}: Cost vs. |V|^2",
+                "vs_V_fixedE.png", square_x=True)
     contour_figure(g, ["scan", "relax", "total"],
                    ["Array scan comparisons", "Relaxation comparisons",
                     "Total comparisons"], "contour_comparisons.png",

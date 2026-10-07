@@ -31,8 +31,8 @@ Raw data: `results/grid.csv`. Comparisons are split into array-scan and relaxati
 | File | Content |
 |---|---|
 | `vs_E_fixedV.png` | |V| = 500, vary |E|: total / scan / relaxation comparisons and time |
-| `vs_V_fixedE.png` | |E| = 20000, vary |V|: same quantities |
-| `contour_comparisons.png` | Filled contours over the (|V|, |E|) plane for scan, relaxation and total comparisons |
+| `vs_V_fixedE.png` | |E| = 20000, vary |V|: same quantities, x axis is |V|^2 so the relationship is a straight line |
+| `contour_comparisons.png` | Filled contours over the (|V|^2, |E|) plane (x axis is |V|^2, so contours are evenly spaced straight lines) for scan, relaxation and total comparisons |
 | `contour_time.png` | Same for running time |
 
 Findings
