@@ -10,6 +10,7 @@ parts) and running time. Outputs go into ./results:
     contour_time.png
 """
 import csv
+import gc
 import os
 import sys
 import time
@@ -24,36 +25,54 @@ from graph_gen import generate_edges, to_matrix
 
 OUT = os.path.join(os.path.dirname(os.path.abspath(__file__)), "results")
 TRIALS = 5
+PASSES = 3  # whole-grid timing passes, see run_grid
 V_VALUES = list(range(100, 1001, 100))
 E_VALUES = list(range(5000, 100001, 5000))
 FIXED_V = 500
 FIXED_E = 20000
 
 
-def measure(n, m):
-    scan = relax = 0.0
-    times = []
-    for seed in range(TRIALS):
-        mat = to_matrix(n, generate_edges(n, m, seed=seed))
-        t = time.perf_counter()
-        _, _, c = dijkstra_matrix_array(mat, 0)
-        times.append(time.perf_counter() - t)
-        scan += c.scan
-        relax += c.relax
-    return scan / TRIALS, relax / TRIALS, float(np.median(times))
-
-
 def run_grid():
+    """
+    Timing on a busy machine is noisy in stretches, so a median of a few runs
+    inside one cell can still come out slow (it showed up as bumps in the time
+    contours). Instead every (|V|, |E|, seed) graph is timed once per pass,
+    each pass visits the graphs in a different shuffled order, and every graph
+    keeps its fastest time. Counts are deterministic, so they just come from
+    the last pass.
+    """
     shape = (len(V_VALUES), len(E_VALUES))
+    tasks = [(i, j, s) for i, n in enumerate(V_VALUES) for j, m in enumerate(E_VALUES)
+             if n - 1 <= m <= n * (n - 1) for s in range(TRIALS)]
+    best = {t: float("inf") for t in tasks}
+    counts = {}
+    rng = np.random.default_rng(2001)
+
+    for p in range(PASSES):
+        for k in rng.permutation(len(tasks)):
+            i, j, s = tasks[k]
+            n, m = V_VALUES[i], E_VALUES[j]
+            mat = to_matrix(n, generate_edges(n, m, seed=s))
+            gc.collect()
+            gc.disable()
+            t = time.perf_counter()
+            _, _, c = dijkstra_matrix_array(mat, 0)
+            elapsed = time.perf_counter() - t
+            gc.enable()
+            best[tasks[k]] = min(best[tasks[k]], elapsed)
+            counts[tasks[k]] = c
+        print(f"pass {p + 1}/{PASSES} done", flush=True)
+
     g = {k: np.full(shape, np.nan) for k in ("scan", "relax", "total", "time")}
-    for i, n in enumerate(V_VALUES):
-        for j, m in enumerate(E_VALUES):
-            if not (n - 1 <= m <= n * (n - 1)):
+    for i in range(len(V_VALUES)):
+        for j in range(len(E_VALUES)):
+            cell = [(i, j, s) for s in range(TRIALS) if (i, j, s) in best]
+            if not cell:
                 continue
-            s, r, t = measure(n, m)
-            g["scan"][i, j], g["relax"][i, j] = s, r
-            g["total"][i, j], g["time"][i, j] = s + r, t
-        print(f"V={n} done")
+            g["scan"][i, j] = np.mean([counts[t].scan for t in cell])
+            g["relax"][i, j] = np.mean([counts[t].relax for t in cell])
+            g["total"][i, j] = g["scan"][i, j] + g["relax"][i, j]
+            g["time"][i, j] = float(np.median([best[t] for t in cell]))
     os.makedirs(OUT, exist_ok=True)
     with open(os.path.join(OUT, "grid.csv"), "w", newline="") as f:
         w = csv.writer(f)

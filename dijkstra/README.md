@@ -25,7 +25,7 @@ python experiments.py
 ## Empirical results (see `results/`)
 
 `experiments.py` runs the algorithm on a grid: |V| = 100..1000 (step 100) x |E| = 5000..100000 (step 5000),
-skipping infeasible cells (|E| > |V|(|V|-1)). Each cell uses 5 random graphs (comparisons averaged, time = median).
+skipping infeasible cells (|E| > |V|(|V|-1)). Each cell uses 5 random graphs (comparisons averaged). For timing, the whole grid is run in 3 shuffled passes and each graph keeps its fastest time (this removes noise from other processes on the machine); a cell's time is the median over its 5 graphs.
 Raw data: `results/grid.csv`. Comparisons are split into array-scan and relaxation parts.
 
 | File | Content |
@@ -39,7 +39,7 @@ Findings
 - Scan comparisons depend only on |V| (about |V|^2 / 2): constant in |E|, vertical contour lines.
 - Relaxation comparisons depend only on |E| (about |E| / 2): constant in |V|, horizontal contour lines.
 - Least-squares fit over the whole grid: comparisons = 0.5004 |V|^2 + 0.5002 |E| + 118 (R^2 = 1.0000).
-- Time fit: 9.3e-8 |V|^2 + 5.9e-8 |E| (R^2 = 0.99). Both terms are present, but |V|^2 dominates for most of the grid,
+- Time fit: 4.8e-8 |V|^2 + 3.3e-8 |E| (R^2 = 0.9986). Both terms are present, but |V|^2 dominates for most of the grid,
   matching Theta(|V|^2 + |E|) = Theta(|V|^2).
 - The matrix row scan (a Theta(|V|) loop per vertex even for non-edges) is not a key comparison, so it is not
   counted, but it is why the time still grows as |V|^2.
