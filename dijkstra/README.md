@@ -24,12 +24,24 @@ python experiments.py
 
 ## Empirical results (see `results/`)
 
-| Experiment | Observation |
-|---|---|
-| exp1: E = 5V, V = 100..1000 | Comparisons grow quadratically in |V| (5,307 -> 503,005); time ~0.001 s -> ~0.11 s. |
-| exp2: E = V(V-1)/2, V = 100..700 | Also quadratic in |V| (7,531 -> 367,665). |
-| exp3: V = 500, E = 499..249,500 | Almost flat in |E| (125,749 -> 250,000 comparisons, time ~0.023-0.033 s): cost is driven by |V|, not |E|. |
+`experiments.py` runs the algorithm on a grid: |V| = 100..1000 (step 100) x |E| = 5000..100000 (step 5000),
+skipping infeasible cells (|E| > |V|(|V|-1)). Each cell uses 5 random graphs (comparisons averaged, time = median).
+Raw data: `results/grid.csv`. Comparisons are split into array-scan and relaxation parts.
 
-Note: the comparison count only covers the PQ scan and relaxation tests; the matrix row scan
-(a Theta(|V|) loop per vertex, even for non-edges) is not counted but is reflected in the timings.
-Timings are Python wall-clock averages over 3 random graphs, so exact numbers vary by machine.
+| File | Content |
+|---|---|
+| `vs_E_fixedV.png` | |V| = 500, vary |E|: total / scan / relaxation comparisons and time |
+| `vs_V_fixedE.png` | |E| = 20000, vary |V|: same quantities |
+| `contour_comparisons.png` | Filled contours over the (|V|, |E|) plane for scan, relaxation and total comparisons |
+| `contour_time.png` | Same for running time |
+
+Findings
+- Scan comparisons depend only on |V| (about |V|^2 / 2): constant in |E|, vertical contour lines.
+- Relaxation comparisons depend only on |E| (about |E| / 2): constant in |V|, horizontal contour lines.
+- Least-squares fit over the whole grid: comparisons = 0.5004 |V|^2 + 0.5002 |E| + 118 (R^2 = 1.0000).
+- Time fit: 9.3e-8 |V|^2 + 5.9e-8 |E| (R^2 = 0.99). Both terms are present, but |V|^2 dominates for most of the grid,
+  matching Theta(|V|^2 + |E|) = Theta(|V|^2).
+- The matrix row scan (a Theta(|V|) loop per vertex even for non-edges) is not a key comparison, so it is not
+  counted, but it is why the time still grows as |V|^2.
+
+Timings are Python wall-clock numbers, so exact values vary by machine.

@@ -6,12 +6,17 @@ adjacency matrix + array as priority queue.
     - decrease-key is a direct array write               -> O(1) each
     - total: O(V^2) regardless of |E|
 
-Returns (dist, parent, comparisons) where `comparisons` is the number of key
-comparisons made (distance comparisons in the priority queue scan and in edge
-relaxation). This is the empirical measure used in the experiments.
+Returns (dist, parent, counts). `counts` holds the key comparisons made:
+    counts.scan  - distance comparisons in the extract-min array scan
+    counts.relax - distance comparisons in edge relaxation
+    counts.total - scan + relax
+This is the empirical measure used in the experiments.
 """
 
+from collections import namedtuple
+
 INF = float("inf")
+Counts = namedtuple("Counts", "scan relax total")
 
 
 def dijkstra_matrix_array(matrix, source):
@@ -22,7 +27,7 @@ def dijkstra_matrix_array(matrix, source):
     parent = [-1] * n
     dist[source] = 0
     in_pq = [True] * n          # the "array" priority queue: dist[] + in_pq[]
-    comparisons = 0
+    scan = relax = 0
 
     for _ in range(n):
         # extract-min: linear scan over the array, Theta(V)
@@ -30,7 +35,7 @@ def dijkstra_matrix_array(matrix, source):
         best = INF
         for v in range(n):
             if in_pq[v]:
-                comparisons += 1
+                scan += 1
                 if u == -1 or dist[v] < best:
                     u, best = v, dist[v]
         if best == INF:
@@ -42,8 +47,8 @@ def dijkstra_matrix_array(matrix, source):
         for v in range(n):
             w = row[v]
             if w and in_pq[v]:
-                comparisons += 1
+                relax += 1
                 if dist[u] + w < dist[v]:
                     dist[v] = dist[u] + w       # decrease-key, O(1)
                     parent[v] = u
-    return dist, parent, comparisons
+    return dist, parent, Counts(scan, relax, scan + relax)
