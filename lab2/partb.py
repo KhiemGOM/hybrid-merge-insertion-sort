@@ -100,11 +100,12 @@ def dijkstra(graph, source, num_vertices):
 
 V = 5000
 e_results = {}
-for E in range(10000, 500001, 10000):
+for E in range(10000, 500001, 20000):
     g = generate_random_graph(V, E)
     start_time = time.perf_counter()
     distnace, comparisons = dijkstra(g, 0, V)
     elapsed_time = time.perf_counter() - start_time
+    comparisons["runtime"] = elapsed_time
     print(f"\nComparison count for {E} edges took {elapsed_time*1000:.2f}ms!\n=========")
     for key, value in comparisons.items():
         print(f"{key}: {value}")
@@ -137,14 +138,35 @@ plt.tight_layout()
 
 plt.show()
 
+############ Plotting Runtime against edges
+
+plt.figure(figsize=(9, 6))
+
+# Plot each comparison metric with line and point markers
+y_vals = [e_results[x]["runtime"] for x in x_vals]
+plt.plot(x_vals, y_vals, marker="D", linestyle='-', linewidth=2, markersize=7, label="Runtime")
+
+plt.title("Dijkstra's Algorithm: Runtime vs. Edges Size", fontsize=14, fontweight='bold', pad=12)
+plt.xlabel("Number of Edges (|E|)", fontsize=12)
+plt.ylabel("Time (s)", fontsize=12)
+plt.xticks(x_vals)
+plt.grid(True, linestyle='--', alpha=0.6)
+plt.legend(frameon=True, fontsize=11)
+plt.tight_layout()
+
+plt.show()
+
+##########
+
 
 E = 500000
 v_results = {}
-for V in range(1000, 50001, 1000):
+for V in range(1000, 50001, 2000):
     g = generate_random_graph(V, E)
     start_time = time.perf_counter()
     distnace, comparisons = dijkstra(g, 0, V)
     elapsed_time = time.perf_counter() - start_time
+    comparisons["runtime"] = elapsed_time
     print(f"\nComparison count for {V} vertices took {elapsed_time*1000:.2f}ms!\n=========")
     for key, value in comparisons.items():
         print(f"{key}: {value}")
@@ -175,3 +197,24 @@ plt.legend(frameon=True, fontsize=11)
 plt.tight_layout()
 
 plt.show()
+
+
+############ Plotting Runtime against edges
+
+plt.figure(figsize=(9, 6))
+
+# Plot each comparison metric with line and point markers
+y_vals = [v_results[x]["runtime"] for x in x_vals]
+plt.plot(x_vals, y_vals, marker="D", linestyle='-', linewidth=2, markersize=7, label="Runtime")
+
+plt.title("Dijkstra's Algorithm: Runtime vs. Vertices Size", fontsize=14, fontweight='bold', pad=12)
+plt.xlabel("Number of Vertices (|V|)", fontsize=12)
+plt.ylabel("Time (s)", fontsize=12)
+plt.xticks(x_vals)
+plt.grid(True, linestyle='--', alpha=0.6)
+plt.legend(frameon=True, fontsize=11)
+plt.tight_layout()
+
+plt.show()
+
+##########
