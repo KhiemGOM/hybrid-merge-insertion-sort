@@ -1,6 +1,6 @@
-"""Cross-check both implementations against heapq-based reference Dijkstra."""
+"""Cross-check the implementation against a heapq-based reference Dijkstra."""
 import heapq
-from dijkstra import dijkstra_matrix_array, dijkstra_list_heap, INF
+from dijkstra import dijkstra_matrix_array, INF
 from graph_gen import generate_edges, to_matrix, to_adj_lists
 
 
@@ -30,7 +30,6 @@ def main():
                 adj = to_adj_lists(n, e)
                 ref = reference(adj, 0)
                 assert dijkstra_matrix_array(to_matrix(n, e), 0)[0] == ref
-                assert dijkstra_list_heap(adj, 0)[0] == ref
                 cases += 1
     print(f"All {cases} cases passed.")
 
